@@ -1,19 +1,31 @@
 import { Module } from '@nestjs/common';
-import { TokenService } from './token.service';
 import { JwtModule } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
+import { ConfigService, ConfigModule } from '@nestjs/config';
+import { TokenService } from './token.service';
 
 @Module({
-  providers: [TokenService],
-  exports: [TokenService],
   imports: [
+    ConfigModule,
     JwtModule.registerAsync({
+      imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        global: true,
-        secret: configService.get<string>('JWT_SECRET'),
-      }),
+      useFactory: (configService: ConfigService) => {
+        const secret = configService.get<string>('JWT_SECRET');
+
+        if (!secret) {
+          throw new Error('JWT_SECRET não definido no .env');
+        }
+
+        return {
+          secret,
+          signOptions: {
+            expiresIn: '1d',
+          },
+        };
+      },
     }),
   ],
+  providers: [TokenService],
+  exports: [TokenService],
 })
 export class TokenModule {}
